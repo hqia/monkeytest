@@ -1,0 +1,14 @@
+#|hhhjjjj
+WAIT|{'seconds':1.0,}
+TOUCH|{'x':400,'y':648,'type':'downAndUp',}
+WAIT|{'seconds':1.0,}
+www|3333
+WAIT|{'seconds':1.0,}
+#|step77
+WAIT|{'seconds':1.0,}
+TOUCH|{'x':400,'y':648,'type':'downAndUp',}
+WAIT|{'seconds':2.0,}
+#|step3
+WAIT|{'seconds':1.0,}
+TOUCH|{'x':885,'y':1180,'type':'downAndUp',}
+WAIT|{'seconds':1.0,}
