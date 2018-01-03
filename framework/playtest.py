@@ -1,15 +1,17 @@
 #coding=utf-8
 # 引入本程序所用到的模块
-import sys,os,datetime
+import sys,os,datetime,logging
 from com.android.monkeyrunner import MonkeyRunner as mr
 from com.android.monkeyrunner import MonkeyDevice as md
 from com.android.monkeyrunner import MonkeyImage as mi
 
+testmode = True            #执行测试时为Ture，获取识别图像为False
 #配置测试信息 
 total_number = 9000    #用例执行最大次数
 #定义矩形元组，作为异常特征识别区域
 rect = ((222,656,50,55),(900,350,30,20))  #A6
 case1 = 'A6-lianjie-duankai'
+case2 = 'qiefenbianlv'
 error_image1 = 'A6Error1.png'
 
 
@@ -17,6 +19,9 @@ image_path = './monkeytest/framework/Image/screenshot/'
 error_image_path = './monkeytest/framework/Image/error/'
 case_path = './monkeytest/framework/test_case/'
 testLog = './monkeytest/framework/testLog.txt'
+
+
+  
 
 
 #定义Error类，包含错误名字、识别区域、参考图片地址四个属性
@@ -43,29 +48,21 @@ def process_file(fp, device):
     for line in fp:
         (cmd, rest) = line.split('|')
         if cmd == '#':
-            print (rest)
-            writetestLog(rest)
+            logger.info(rest)
             continue
         if cmd not in CMD_MAP:
-            print ('unknown command: ' + cmd)
-            writetestLog('unknown command: ' + cmd)
+            logger.info('unknown command: ' + cmd)
             continue
         try:
             # Parse the pydict
             rest = eval(rest)
         except:
-            writetestLog('unable to parse options')
-            print ('unable to parse options')
+            logger.warning('unable to parse options')
             continue
         CMD_MAP[cmd](device, rest)
 
             
 
-        
-def writetestLog(tLog):       
-    f = open(testLog, 'a')
-    f.write(datetime.datetime.now().strftime('%y-%m-%d %H:%M:%S')+"    "+tLog+'\n')
-    f.close()
     
 def checkError(ERR):
 #截当前屏幕图片
@@ -74,19 +71,20 @@ def checkError(ERR):
     ifError = nowScreen.getSubImage(ERR.coordinate)
 #用当前图片异常识别区域跟预存的异常特征对比并返回结果
     if(ifError.sameAs(ERR.address, 0.9)):
-        print (ERR.name)
-        writetestLog(ERR.name)
+        logger.info(ERR.name)
         return True
     else:
         return False
         
 #导出手机log并清除log缓存
-def makelog():
-    os.system('adb logcat -d > ./monkeytest/framework/log/log.txt')
+def getPhoneLog():
+    logger.info("get phone log")
+    os.system('adb logcat -d > ./monkeytest/framework/phone_log/log.txt')
     os.system('adb logcat -c')
-    os.rename('./monkeytest/framework/log/log.txt','./monkeytest/framework/log/'+str(datetime.datetime.now().strftime('%y%m%d-%H%M%S'))+'.txt')
+    os.rename('./monkeytest/framework/phone_log/log.txt','./monkeytest/framework/phone_log/'+str(datetime.datetime.now().strftime('%y%m%d-%H%M%S'))+'.txt')
 
 def takescreenshot():
+    logger.info("take screenshot")
     device.takeSnapshot().writeToFile(image_path+'_'+str(datetime.datetime.now().strftime('%y%m%d-%H%M%S'))+'.png')
         
 #播放脚本
@@ -96,31 +94,45 @@ def playback(file):
     process_file(fp, device)
     fp.close()
 
-if(os.path.exists(testLog)): os.remove(testLog)
+    
+#配置log    
+logger = logging.getLogger('scriptLog')
+logger.setLevel(logging.WARNING)  
+# 创建一个handler，用于写入日志文件    
+fh = logging.FileHandler(testLog)  
+# 再创建一个handler，用于输出到控制台    
+ch = logging.StreamHandler()
+# 定义handler的输出格式formatter    
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')  
+fh.setFormatter(formatter)  
+ch.setFormatter(formatter)
+logger.addHandler(fh)  
+logger.addHandler(ch)     
+
     
 device = mr.waitForConnection()
-try:
-        device.wake()
-except java.lang.NullPointerException, e:
-        print >> sys.stderr, "%s: ERROR: Couldn't connect to %s: %s" % (progname, serialno, e)
-        sys.exit(3)  
 
+def getrect(error_image):
+    nowScreen = device.takeSnapshot()
+    ifError = nowScreen.getSubImage(rect[0])   
+    ifError.writeToFile(error_image_path+error_image)
+    logger.info("get "+ error_image)
 
-#用于获取识别图片，开始执行测试前需注释掉该段代码
-# def getrect():
-    # nowScreen = device.takeSnapshot()
-    # ifError = nowScreen.getSubImage(rect[0])   
-    # ifError.writeToFile(error_image_path+error_image)
-# getrect()  
-   
+if(testmode):
 #开始测试
-for count in range(total_number):
-    print(count)
-    writetestLog(str(count))
-    playback(case1)   
-    # if(not checkError(error1)):
-        # makelog()   #保存手机打印
-        # takescreenshot()   #截图
+    logger.info("begin------------------------------")
+    for count in range(total_number):
+        logger.info(count)
+        playback(case2)   
+        if(not checkError(error1)):
+            getPhoneLog()   #保存手机打印
+            takescreenshot()   #截图         
+else:
+#获取识别图像
+    getrect(error_image1)
+    
+
+    
 
     
    
